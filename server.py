@@ -3,10 +3,12 @@ import aiofiles
 import datetime
 import asyncio
 import os
-
+import logging
 
 INTERVAL_SECS = 1
 
+
+logger = logging.getLogger(__name__)
 
 async def handle_index_page(request):
     async with aiofiles.open('index.html', mode='r') as index_file:
@@ -36,6 +38,7 @@ async def archive(request):
             break    
 
         archive_batch = await process.stdout.read(100*1024)
+        logger.debug('Sending archive chunk ...')
         await response.write(archive_batch)
 
     return response
@@ -43,6 +46,10 @@ async def archive(request):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        level=logging.DEBUG
+    )
     app = web.Application()
     app.add_routes([
         web.get('/', handle_index_page),
