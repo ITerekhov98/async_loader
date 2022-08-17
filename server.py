@@ -33,14 +33,18 @@ async def archive(request):
         stderr=asyncio.subprocess.PIPE,
         cwd= f'test_photos/{archive_hash}'
     )
-    while True:
-        if process.stdout.at_eof():
-            break    
-
-        archive_batch = await process.stdout.read(100*1024)
-        logger.debug('Sending archive chunk ...')
-        await response.write(archive_batch)
-
+    try:
+        while not process.stdout.at_eof():   
+            batch = await process.stdout.read(100*1024)
+            logger.info('Sending archive chunk ...')
+            await response.write(batch)
+    except asyncio.CancelledError:
+        logger.warning('Download was interrupted')
+        raise
+    finally:
+        if process.returncode:
+            process.kill()
+            await process.communicate()
     return response
     
 
@@ -48,7 +52,7 @@ async def archive(request):
 if __name__ == '__main__':
     logging.basicConfig(
         format='%(asctime)s - %(levelname)s - %(message)s',
-        level=logging.DEBUG
+        level=logging.WARNING
     )
     app = web.Application()
     app.add_routes([
